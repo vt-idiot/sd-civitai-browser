@@ -11,8 +11,8 @@ import os
 from tqdm import tqdm
 import re
 from requests.exceptions import ConnectionError
-import urllib.request
-
+from PIL import Image
+from io import BytesIO
 
 def download_file(url, file_name):
     # Maximum number of retries
@@ -85,69 +85,15 @@ def download_file(url, file_name):
         else:
             print(f"Error: File download failed. Retrying... {file_name_display}")
 
-#def download_file(url, file_name):
-#    # Download the file and save it to a local file
-#    response = requests.get(url, stream=True)
-#
-#    # Get the total size of the file
-#    total_size = int(response.headers.get("Content-Length", 0))
-#
-#    # Split filename from included path
-#    tokens = re.split(re.escape('\\'), file_name)
-#    file_name_display = tokens[-1]
-#
-#    # Initialize the progress bar
-#    progress = tqdm(total=total_size, unit="B", unit_scale=True, desc=f"Downloading {file_name_display}")
-#
-#    # Open a local file to save the download
-#    with open(file_name, "wb") as f:
-#        # Iterate over the response chunks and update the progress bar
-#        for chunk in response.iter_content(chunk_size=1024):
-#            if chunk:  # filter out keep-alive new chunks
-#                f.write(chunk)
-#                progress.update(len(chunk))
-#
-#    # Close the progress bar
-#    progress.close()
-
-def download_file_thread(url, file_name, content_type, use_new_folder, model_name):
-    if content_type == "Checkpoint":
-        folder = "models/Stable-diffusion"
-        new_folder = "models/Stable-diffusion/new"
-    elif content_type == "Hypernetwork":
-        folder = "models/hypernetworks"
-        new_folder = "models/hypernetworks/new"
-    elif content_type == "TextualInversion":
-        folder = "embeddings"
-        new_folder = "embeddings/new"
-    elif content_type == "AestheticGradient":
-        folder = "extensions/stable-diffusion-webui-aesthetic-gradients/aesthetic_embeddings"
-        new_folder = "extensions/stable-diffusion-webui-aesthetic-gradients/aesthetic_embeddings/new"
-    elif content_type == "LORA":
-        folder = "models/Lora"
-        new_folder = "models/Lora/new"
-    if content_type == "TextualInversion" or content_type == "AestheticGradient":
-        if use_new_folder:
-            model_folder = new_folder
-            if not os.path.exists(new_folder):
-                os.makedirs(new_folder)
-            
-        else:
-            model_folder = folder
-            if not os.path.exists(model_folder):
-                os.makedirs(model_folder)
-    else:            
-        if use_new_folder:
-            model_folder = os.path.join(new_folder,model_name.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
-            if not os.path.exists(new_folder):
-                os.makedirs(new_folder)
-            if not os.path.exists(model_folder):
-                os.makedirs(model_folder)
-            
-        else:
-            model_folder = os.path.join(folder,model_name.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
-            if not os.path.exists(model_folder):
-                os.makedirs(model_folder)
+def download_file_thread(url, file_name, folder, use_new_folder, model_name):     
+    if use_new_folder:
+        model_folder = os.path.join(folder,model_name.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
+        if not os.path.exists(model_folder):
+            os.makedirs(model_folder)
+    else:
+        model_folder = folder
+        if not os.path.exists(model_folder):
+            os.makedirs(model_folder)
 
     path_to_new_file = os.path.join(model_folder, file_name)     
 
@@ -156,51 +102,20 @@ def download_file_thread(url, file_name, content_type, use_new_folder, model_nam
         # Start the thread
     thread.start()
 
-def save_text_file(file_name, content_type, use_new_folder, trained_words, model_name):
+def save_text_file(file_name, folder, use_new_folder, trained_words, model_name):
     print("Save Text File Clicked")
-    if content_type == "Checkpoint":
-        folder = "models/Stable-diffusion"
-        new_folder = "models/Stable-diffusion/new"
-    elif content_type == "Hypernetwork":
-        folder = "models/hypernetworks"
-        new_folder = "models/hypernetworks/new"
-    elif content_type == "TextualInversion":
-        folder = "embeddings"
-        new_folder = "embeddings/new"
-    elif content_type == "AestheticGradient":
-        folder = "extensions/stable-diffusion-webui-aesthetic-gradients/aesthetic_embeddings"
-        new_folder = "extensions/stable-diffusion-webui-aesthetic-gradients/aesthetic_embeddings/new"
-    elif content_type == "LORA":
-        folder = "models/Lora"
-        new_folder = "models/Lora/new"
-    if content_type == "TextualInversion" or content_type == "AestheticGradient":
-        if use_new_folder:
-            model_folder = new_folder
-            if not os.path.exists(new_folder):
-                os.makedirs(new_folder)
-            
-        else:
-            model_folder = folder
-            if not os.path.exists(model_folder):
-                os.makedirs(model_folder)
-    else:            
-        if use_new_folder:
-            model_folder = os.path.join(new_folder,model_name.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
-            if not os.path.exists(new_folder):
-                os.makedirs(new_folder)
-            if not os.path.exists(model_folder):
-                os.makedirs(model_folder)
-            
-        else:
-            model_folder = os.path.join(folder,model_name.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
-            if not os.path.exists(model_folder):
-                os.makedirs(model_folder)
-   
+    if use_new_folder:
+        model_folder = os.path.join(folder,model_name.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
+        if not os.path.exists(model_folder):
+            os.makedirs(model_folder)
+    else:
+        model_folder = folder
+        if not os.path.exists(model_folder):
+            os.makedirs(model_folder)
     path_to_new_file = os.path.join(model_folder, file_name.replace(".ckpt",".txt").replace(".safetensors",".txt").replace(".pt",".txt").replace(".yaml",".txt"))
     if not os.path.exists(path_to_new_file):
         with open(path_to_new_file, 'w') as f:
             f.write(trained_words)
-
 
 # Set the URL for the API endpoint
 api_url = "https://civitai.com/api/v1/models?limit=50"
@@ -237,7 +152,6 @@ def update_next_page(show_nsfw):
             if not temp_nsfw:
                 model_dict[item['name']] = item['name']
     return gr.Dropdown.update(choices=[v for k, v in model_dict.items()], value=None), gr.Dropdown.update(choices=[], value=None)
-
 
 def update_model_list(content_type, sort_type, use_search_term, search_term, show_nsfw):
     global json_data
@@ -286,7 +200,6 @@ def update_dl_url(model_name=None, model_version=None, model_filename=None):
 
 def update_model_info(model_name=None, model_version=None):
 
-
     if model_name and model_version:
         model_version = model_version.replace(f' - {model_name}','').strip()
         global json_data
@@ -321,7 +234,6 @@ def update_model_info(model_name=None, model_version=None):
     else:
         return gr.HTML.update(value=None), gr.Textbox.update(value=None), gr.Dropdown.update(choices=[], value=None)
 
-
 def request_civit_api(api_url=None):
     # Make a GET request to the API
     response = requests.get(api_url)
@@ -334,36 +246,44 @@ def request_civit_api(api_url=None):
     data = json.loads(response.text)
     return data
 
-def update_everything(list_models, list_versions, model_filename, dl_url):
+def update_everything(list_models, list_versions, model_filename, dl_url, content_type):
     (a, d, f) = update_model_info(list_models, list_versions)
     dl_url = update_dl_url(list_models, list_versions, f['value'])
-    return (a, d, f, list_versions, list_models, dl_url)
+    if content_type == "Checkpoint":
+        folder = "models/Stable-diffusion"
+    elif content_type == "Hypernetwork":
+        folder = "models/hypernetworks"
+    elif content_type == "TextualInversion":
+        folder = "embeddings"
+    elif content_type == "AestheticGradient":
+        folder = "extensions/stable-diffusion-webui-aesthetic-gradients/aesthetic_embeddings"
+    elif content_type == "LORA":
+        folder = "models/Lora"
+    else:
+        folder = "models"
+    return (a, d, f, list_versions, list_models, dl_url, folder)
 
-def save_image_files(preview_image_html, model_filename, list_models):
+def save_image_files(preview_image_html, file_name, folder, use_new_folder, model_name):
     print("Save Images Clicked")
+    if use_new_folder:
+        model_folder = os.path.join(folder,model_name.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
+        if not os.path.exists(model_folder):
+            os.makedirs(model_folder)
+    else:
+        model_folder = folder
+        if not os.path.exists(model_folder):
+            os.makedirs(model_folder)
     img_urls = re.findall(r'src=[\'"]?([^\'" >]+)', preview_image_html)
-    
-    name = os.path.splitext(model_filename)[0]
-    model_folder = os.path.join("models\Stable-diffusion",list_models.replace(" ","_").replace("(","").replace(")","").replace("|","").replace(":","-"))
-
-    opener = urllib.request.build_opener()
-    opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-    urllib.request.install_opener(opener)
-
     for i, img_url in enumerate(img_urls):
-        filename = f'{name}_{i}.png'
         img_url = img_url.replace("https", "http").replace("=","%3D")
-
-        print(img_url, filename)
-        try:
-            with urllib.request.urlopen(img_url) as url:
-                with open(os.path.join(model_folder, filename), 'wb') as f:
-                    f.write(url.read())
-                    print("\t\t\tDownloaded")
-            #with urllib.request.urlretrieve(img_url, os.path.join(model_folder, filename)) as dl:
-                    
-        except urllib.error.URLError as e:
-            print(f'Error: {e.reason}')
+        print(img_url)
+        jpg_response = requests.get(img_url)
+        path_to_new_file = os.path.join(model_folder, file_name.replace(".ckpt",".preview.png").replace(".safetensors",".preview.png").replace(".pt",".preview.png").replace(".yaml",".preview.png"))
+        png = Image.open(BytesIO(jpg_response.content))
+        if not os.path.exists(path_to_new_file):
+            png.save(path_to_new_file, 'PNG')
+            print("\t\t\tDownloaded")
+        break
 
 def on_ui_tabs():
     with gr.Blocks() as civitai_interface:
@@ -391,19 +311,39 @@ def on_ui_tabs():
         with gr.Row():
             update_info = gr.Button(value='1st - Get Model Info')
             save_text = gr.Button(value="2nd - Save Text")
-            save_images = gr.Button(value="3rd - Save Images")
+            save_images = gr.Button(value="3rd - Save Preview")
             download_model = gr.Button(value="4th - Download Model")
-            save_model_in_new = gr.Checkbox(label="Save Model to new folder", value=False)
+            save_model_in_new = gr.Checkbox(label="Save Model to subfolder", value=False)
+            folder = gr.Textbox(label="Saves to", interactive=False, value=None)
         with gr.Row():
             preview_image_html = gr.HTML()
+        update_info.click(
+            fn=update_everything,
+            inputs=[
+            list_models,
+            list_versions,
+            model_filename,
+            dl_url,
+            content_type
+            ],
+            outputs=[
+            preview_image_html,
+            dummy,
+            model_filename,
+            list_versions,
+            list_models,
+            dl_url,
+            folder,
+            ]
+        )
         save_text.click(
             fn=save_text_file,
             inputs=[
             model_filename,
-            content_type,
+            folder,
             save_model_in_new,
             dummy,
-            list_models,
+            list_models
             ],
             outputs=[]
         )
@@ -412,6 +352,8 @@ def on_ui_tabs():
             inputs=[
             preview_image_html,
             model_filename,
+            folder,
+            save_model_in_new,
             list_models
             ],
             outputs=[]
@@ -421,7 +363,7 @@ def on_ui_tabs():
             inputs=[
             dl_url,
             model_filename,
-            content_type,
+            folder,
             save_model_in_new,
             list_models,
             ],
@@ -439,24 +381,6 @@ def on_ui_tabs():
             outputs=[
             list_models,
             list_versions,
-            ]
-        )
-        update_info.click(
-            fn=update_everything,
-            #fn=update_model_info,
-            inputs=[
-            list_models,
-            list_versions,
-            model_filename,
-            dl_url
-            ],
-            outputs=[
-            preview_image_html,
-            dummy,
-            model_filename,
-            list_versions,
-            list_models,
-            dl_url
             ]
         )
         list_models.change(
